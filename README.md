@@ -80,7 +80,7 @@ Allows users to plan their weeks worth of food based on categories they select. 
         * Can see recipe instructions upon selection
 
 ## Wireframes
-[Basic Wireframe!](Wireframes-6.jpg)
+![Basic Wireframe!](Wireframes-6.jpg)
 
 ### [BONUS] Digital Wireframes & Mockups
 
