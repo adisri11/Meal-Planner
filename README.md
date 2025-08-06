@@ -46,15 +46,15 @@ Allows users to plan their weeks worth of food based on categories they select. 
 
 ### 2. Screen Archetypes
 
--  Stream
-    - User choose which categories for meals
-    - User sees list of recipes
-    - User can see saved lists
-- Detail
-    - User can see recipe instructions
-    - User can see list of groceries
-- Creation
-    - User can create recipe
+-  [ ]Stream
+    - [ ] User choose which categories for meals
+    - [ ] User sees list of recipes
+    - [ ] User can see saved lists
+- [ ] Detail
+    - [X] User can see recipe instructions
+    - [ ] User can see list of groceries
+- [ ] Creation
+    - [ ] User can create recipe
 
 ### 3. Navigation
 
