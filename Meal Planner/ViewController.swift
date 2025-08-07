@@ -9,67 +9,44 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    @IBOutlet weak var saladButton: UIButton!
-    @IBOutlet weak var riceButton: UIButton!
-    @IBOutlet weak var vegetarianButton: UIButton!
-    @IBOutlet weak var noodlesButton: UIButton!
+
+    @IBOutlet weak var saladSwitch: UISwitch!
+    @IBOutlet weak var riceSwitch: UISwitch!
+    @IBOutlet weak var pastaSwitch: UISwitch!
+    @IBOutlet weak var vegetarianSwitch: UISwitch!
     
+    @IBOutlet weak var createList: UIButton!
+    
+    var selectedCategories: [String] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Meal Planner"
     }
     
-    @IBAction func saladButtonTapped(_ sender: UIButton) {
-        print("\nFetching meals for: Salad)...")
-        MealAPI.fetchMealsByKeyword("Salad") { meals in
-            if meals.isEmpty {
-                print("No meals found for Salad.")
-            } else {
-                print("Fetched meals (\(meals.count)):")
-                for meal in meals {
-                    print("• \(meal.strMeal)")
-                }
-            }
-        }
+    
+    @IBAction func createListTapped(_ sender: Any) {
+        selectedCategories.removeAll()
+               
+           if saladSwitch.isOn { selectedCategories.append("Salad") }
+           if riceSwitch.isOn { selectedCategories.append("Rice") }
+           if vegetarianSwitch.isOn { selectedCategories.append("Vegetarian") }
+           if pastaSwitch.isOn { selectedCategories.append("Pasta") } 
+           
+           if selectedCategories.isEmpty {
+               print("⚠️ No categories selected")
+               return
+           }
+           
+           // Pass selected categories to MealListViewController
+           performSegue(withIdentifier: "ShowMealList", sender: self)
     }
     
-    @IBAction func riceButtonTapped(_ sender: UIButton) {
-        MealAPI.fetchMealsByKeyword("Rice") {meals in
-            if meals.isEmpty {
-                print("No meals found for Rice.")
-            } else {
-                print("Fetched meals (\(meals.count)):")
-                for meal in meals {
-                    print("• \(meal.strMeal)")
-                }
-            }
-        }
-    }
-    
-    @IBAction func noddlesButtonTapped(_ sender: UIButton) {
-        MealAPI.fetchMealsByKeyword("Noodles") {meals in
-            if meals.isEmpty {
-                print("No meals found for Noodles.")
-            } else {
-                print("Fetched meals (\(meals.count)):")
-                for meal in meals {
-                    print("• \(meal.strMeal)")
-                }
-            }
-        }
-    }
-    
-    @IBAction func vegetarianButtonTapped(_ sender: UIButton) {
-        MealAPI.fetchMealsByCategory("Vegetarian"){meals in
-            if meals.isEmpty {
-                print("No meals found for Vegetarian.")
-            } else {
-                print("Fetched meals (\(meals.count)):")
-                for meal in meals {
-                    print("• \(meal.strMeal)")
-                }
-            }
-        }
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+       if segue.identifier == "ShowMealList",
+          let destinationVC = segue.destination as? MealListViewController {
+           destinationVC.selectedCategories = selectedCategories
+       }
     }
 }
 

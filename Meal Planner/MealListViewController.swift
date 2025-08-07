@@ -11,61 +11,146 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
 
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var searchBar: UISearchBar!
+    @IBOutlet weak var groceryList: UIButton!
     
     var meals: [Meal] = []
-
+    var selectedCategories: [String] = [] // Passed from ViewController
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Find Recipes"
-
+        title = "Meal List"
         tableView.delegate = self
         tableView.dataSource = self
-        searchBar.delegate = self
-
-        // Optional: Start with a default search (e.g., "noodle")
-        searchForMeals(keyword: "noodle")
+        fetchCombinedMeals()
+    }
+    
+    func fetchCombinedMeals() {
+        meals.removeAll()
+        let group = DispatchGroup()
+        var fetchedMeals: [Meal] = []
+        
+        for category in selectedCategories {
+                if category == "Rice" || category == "Salad" {
+                    group.enter()
+                    MealAPI.fetchMealsByKeyword(category) { keywordMeals in
+                        fetchedMeals.append(contentsOf: keywordMeals)
+                        group.leave()
+                    }
+                } else if category == "Pasta" || category == "Vegetarian" {
+                    group.enter()
+                    MealAPI.fetchMealsByCategory(category) { categoryMeals in
+                        fetchedMeals.append(contentsOf: categoryMeals)
+                        group.leave()
+                    }
+                }
+            }
+            
+            group.notify(queue: .main) { [weak self] in
+                var seenIDs = Set<String>()
+                self?.meals = fetchedMeals.filter { meal in
+                    if seenIDs.contains(meal.idMeal) {
+                        return false
+                    } else {
+                        seenIDs.insert(meal.idMeal)
+                        return true
+                    }
+                }
+                
+                print("✅ Deduplicated meals: \(self?.meals.count ?? 0)")
+                self?.tableView.reloadData()
+            }
     }
 
-    // Search API Call
-    func searchForMeals(keyword: String) {
-        MealAPI.fetchMealsByKeyword(keyword) { [weak self] meals in
-            self?.meals = meals
-            self?.tableView.reloadData()
+
+    @IBAction func groceryListTapped(_ sender: Any) {
+        generateGroceryList()
+    }
+
+    func generateGroceryList() {
+        let group = DispatchGroup()
+        var allIngredients: [String] = []
+
+        for meal in meals {
+            group.enter()
+            MealAPI.fetchMealDetails(meal.idMeal) { detail in
+                if let detail = detail {
+                    allIngredients.append(contentsOf: detail.ingredientsWithMeasurements)
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            let combinedIngredients = self.combineIngredients(allIngredients)
+            self.performSegue(withIdentifier: "ShowGroceryList", sender: combinedIngredients)
+        }
+    }
+    
+    private func combineIngredients(_ ingredients: [String]) -> [String] {
+        var ingredientDict: [String: String] = [:]
+
+        for entry in ingredients {
+            let parts = entry.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2 else { continue }
+
+            let ingredient = parts[0]
+            let measurement = parts[1]
+
+            if let existing = ingredientDict[ingredient] {
+                // Combine measurements if numeric
+                let newMeasurement = mergeMeasurements(existing, measurement)
+                ingredientDict[ingredient] = newMeasurement
+            } else {
+                ingredientDict[ingredient] = measurement
+            }
+        }
+
+        // Convert back to ["Ingredient - Measurement"]
+        return ingredientDict.map { "\($0.key) - \($0.value)" }.sorted()
+    }
+    
+    private func mergeMeasurements(_ first: String, _ second: String) -> String {
+        // Extract numbers if present
+        let firstValue = Double(first.components(separatedBy: " ").first ?? "") ?? 0
+        let secondValue = Double(second.components(separatedBy: " ").first ?? "") ?? 0
+        
+        if firstValue > 0 && secondValue > 0 {
+            // Use unit from the first measurement
+            let unit = first.replacingOccurrences(of: "\(firstValue)", with: "").trimmingCharacters(in: .whitespaces)
+            return "\(firstValue + secondValue) \(unit)"
+        } else {
+            // If parsing fails, just append both
+            return "\(first), \(second)"
         }
     }
 
-    // MARK: - UISearchBarDelegate
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        guard let text = searchBar.text, !text.isEmpty else { return }
-        searchForMeals(keyword: text)
-        searchBar.resignFirstResponder()
-    }
-
-    // MARK: - UITableView DataSource
+    // TableView Methods
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return meals.count
+        meals.count
     }
-
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "MealCell", for: indexPath)
-        let meal = meals[indexPath.row]
-        cell.textLabel?.text = meal.strMeal
+        cell.textLabel?.text = meals[indexPath.row].strMeal
         return cell
     }
 
-    // MARK: - UITableView Delegate
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let selectedMeal = meals[indexPath.row]
         performSegue(withIdentifier: "ShowMealDetail", sender: selectedMeal)
     }
 
-    // Prepare segue to detail view
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowMealDetail",
-           let detailVC = segue.destination as? MealDetailViewController,
-           let meal = sender as? Meal {
-            detailVC.mealID = meal.idMeal
-        }
+               let detailVC = segue.destination as? MealDetailViewController,
+               let meal = sender as? Meal {
+                detailVC.mealID = meal.idMeal
+            }
+            else if segue.identifier == "ShowGroceryList",
+                    let groceryVC = segue.destination as? GroceryListViewController,
+                    let groceryItems = sender as? [String] {
+                groceryVC.groceryItems = groceryItems
+            }
     }
-}
 
+}

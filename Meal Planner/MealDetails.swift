@@ -61,3 +61,20 @@ struct MealDetail: Codable {
     let strMeasure19: String?
     let strMeasure20: String?
 }
+
+extension MealDetail {
+    var ingredientsWithMeasurements: [String] {
+        var list: [String] = []
+        let mirror = Mirror(reflecting: self)
+        
+        for i in 1...20 {
+            if let ingredient = mirror.children.first(where: { $0.label == "strIngredient\(i)" })?.value as? String,
+               let measure = mirror.children.first(where: { $0.label == "strMeasure\(i)" })?.value as? String,
+               !ingredient.trimmingCharacters(in: .whitespaces).isEmpty {
+                let combined = "\(ingredient) - \(measure.trimmingCharacters(in: .whitespaces))"
+                list.append(combined)
+            }
+        }
+        return list
+    }
+}
