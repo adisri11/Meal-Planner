@@ -82,18 +82,6 @@ Allows users to plan their weeks worth of food based on categories they select. 
 ## Wireframes
 ![Basic Wireframe!](Wireframes-6.jpg)
 
-### [BONUS] Digital Wireframes & Mockups
-
-### [BONUS] Interactive Prototype
-
-## Schema 
-
-[This section will be completed in Unit 9]
-
-### Models
-
-[Add table of models]
-
 ### Networking
 
 - [Add list of network requests by screen ]
