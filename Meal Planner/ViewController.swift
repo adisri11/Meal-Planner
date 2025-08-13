@@ -15,15 +15,30 @@ class ViewController: UIViewController {
     @IBOutlet weak var pastaSwitch: UISwitch!
     @IBOutlet weak var vegetarianSwitch: UISwitch!
     
+    
+    @IBOutlet weak var recipeCountLabel: UILabel!
+    @IBOutlet weak var recipeCountStepper: UIStepper!
+    var maxRecipeCount: Int = 5
+    
     @IBOutlet weak var createList: UIButton!
+    
     
     var selectedCategories: [String] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Meal Planner"
+        recipeCountStepper.minimumValue = 1
+        recipeCountStepper.maximumValue = 14
+        recipeCountStepper.value = 5
+        recipeCountLabel.text = "Recipes: 5"
     }
     
+    
+    @IBAction func recipeCountChanged(_ sender: UIStepper) {
+        maxRecipeCount = Int(sender.value)
+        recipeCountLabel.text = "Recipes: \(maxRecipeCount)"
+    }
     
     @IBAction func createListTapped(_ sender: Any) {
         selectedCategories.removeAll()
@@ -46,6 +61,7 @@ class ViewController: UIViewController {
        if segue.identifier == "ShowMealList",
           let destinationVC = segue.destination as? MealListViewController {
            destinationVC.selectedCategories = selectedCategories
+           destinationVC.recipeCount = maxRecipeCount
        }
     }
 }

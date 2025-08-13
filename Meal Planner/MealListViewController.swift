@@ -14,7 +14,8 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
     @IBOutlet weak var groceryList: UIButton!
     
     var meals: [Meal] = []
-    var selectedCategories: [String] = [] // Passed from ViewController
+    var selectedCategories: [String] = []
+    var recipeCount: Int = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,7 +23,9 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
         tableView.delegate = self
         tableView.dataSource = self
         fetchCombinedMeals()
+        
     }
+    
     
     func fetchCombinedMeals() {
         meals.removeAll()
@@ -30,36 +33,43 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
         var fetchedMeals: [Meal] = []
         
         for category in selectedCategories {
-                if category == "Rice" || category == "Salad" {
-                    group.enter()
-                    MealAPI.fetchMealsByKeyword(category) { keywordMeals in
-                        fetchedMeals.append(contentsOf: keywordMeals)
-                        group.leave()
-                    }
-                } else if category == "Pasta" || category == "Vegetarian" {
-                    group.enter()
-                    MealAPI.fetchMealsByCategory(category) { categoryMeals in
-                        fetchedMeals.append(contentsOf: categoryMeals)
-                        group.leave()
-                    }
+            if category == "Rice" || category == "Salad" {
+                group.enter()
+                MealAPI.fetchMealsByKeyword(category) { keywordMeals in
+                    fetchedMeals.append(contentsOf: keywordMeals)
+                    group.leave()
+                }
+            } else if category == "Pasta" || category == "Vegetarian" {
+                group.enter()
+                MealAPI.fetchMealsByCategory(category) { categoryMeals in
+                    fetchedMeals.append(contentsOf: categoryMeals)
+                    group.leave()
                 }
             }
+        }
+        
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
             
-            group.notify(queue: .main) { [weak self] in
-                var seenIDs = Set<String>()
-                self?.meals = fetchedMeals.filter { meal in
-                    if seenIDs.contains(meal.idMeal) {
-                        return false
-                    } else {
-                        seenIDs.insert(meal.idMeal)
-                        return true
-                    }
-                }
-                
-                print("✅ Deduplicated meals: \(self?.meals.count ?? 0)")
-                self?.tableView.reloadData()
-            }
+            // ✅ Deduplicate by idMeal
+            let uniqueMeals = Array(Set(fetchedMeals))
+            
+            // ✅ Shuffle
+            self.meals = uniqueMeals.shuffled()
+            
+            // ✅ Limit to requested number (max 10)
+            let limit = min(self.recipeCount, 10, self.meals.count)
+            self.meals = Array(self.meals.prefix(limit))
+            
+            print("✅ Showing \(self.meals.count) random recipes")
+            
+            // ✅ Save automatically
+            SavedRecipesManager.shared.saveAllRecipes(self.meals)
+            
+            self.tableView.reloadData()
+        }
     }
+
 
 
     @IBAction func groceryListTapped(_ sender: Any) {
@@ -110,18 +120,59 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
     }
     
     private func mergeMeasurements(_ first: String, _ second: String) -> String {
-        // Extract numbers if present
-        let firstValue = Double(first.components(separatedBy: " ").first ?? "") ?? 0
-        let secondValue = Double(second.components(separatedBy: " ").first ?? "") ?? 0
-        
-        if firstValue > 0 && secondValue > 0 {
-            // Use unit from the first measurement
-            let unit = first.replacingOccurrences(of: "\(firstValue)", with: "").trimmingCharacters(in: .whitespaces)
-            return "\(firstValue + secondValue) \(unit)"
-        } else {
-            // If parsing fails, just append both
-            return "\(first), \(second)"
+        func parseMeasurement(_ measurement: String) -> (value: Double?, unit: String) {
+            let parts = measurement.split(separator: " ", maxSplits: 1).map { String($0) }
+            guard !parts.isEmpty else { return (nil, "") }
+            
+            // Try to parse number (whole, decimal, fraction, or mixed)
+            let numberPart = parts[0]
+            let value = parseNumber(numberPart)
+            let unit = parts.count > 1 ? parts[1] : ""
+            return (value, unit)
         }
+        
+        func parseNumber(_ text: String) -> Double? {
+            // Handle mixed numbers like "1 1/2"
+            if text.contains(" ") {
+                let comps = text.split(separator: " ")
+                if comps.count == 2,
+                   let whole = Double(comps[0]),
+                   let frac = parseFraction(String(comps[1])) {
+                    return whole + frac
+                }
+            }
+            // Handle fractions like "1/2"
+            if let frac = parseFraction(text) {
+                return frac
+            }
+            // Handle normal doubles
+            return Double(text)
+        }
+        
+        func parseFraction(_ text: String) -> Double? {
+            let comps = text.split(separator: "/")
+            if comps.count == 2,
+               let numerator = Double(comps[0]),
+               let denominator = Double(comps[1]),
+               denominator != 0 {
+                return numerator / denominator
+            }
+            return nil
+        }
+        
+        let firstParsed = parseMeasurement(first)
+        let secondParsed = parseMeasurement(second)
+        
+        // Only merge if both have numbers and same unit
+        if let v1 = firstParsed.value,
+           let v2 = secondParsed.value,
+           firstParsed.unit.lowercased() == secondParsed.unit.lowercased() {
+            let sum = v1 + v2
+            return "\(sum.cleanString()) \(firstParsed.unit)"
+        }
+        
+        // Fallback: just append
+        return "\(first), \(second)"
     }
 
     // TableView Methods
@@ -142,15 +193,24 @@ class MealListViewController: UIViewController, UITableViewDelegate, UITableView
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowMealDetail",
-               let detailVC = segue.destination as? MealDetailViewController,
-               let meal = sender as? Meal {
-                detailVC.mealID = meal.idMeal
-            }
-            else if segue.identifier == "ShowGroceryList",
-                    let groceryVC = segue.destination as? GroceryListViewController,
-                    let groceryItems = sender as? [String] {
-                groceryVC.groceryItems = groceryItems
-            }
+           let detailVC = segue.destination as? MealDetailViewController,
+           let meal = sender as? Meal {
+            detailVC.mealID = meal.idMeal
+            print("🛠 Passing mealID: \(meal.idMeal) to MealDetailViewController")
+        }
+        else if segue.identifier == "ShowGroceryList",
+                let groceryVC = segue.destination as? GroceryListViewController,
+                let groceryItems = sender as? [String] {
+            groceryVC.groceryItems = groceryItems
+        }
     }
 
+}
+
+private extension Double {
+    func cleanString() -> String {
+        return self.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(self))
+            : String(self)
+    }
 }
