@@ -16,6 +16,10 @@ Original App Design Project - README Template
 
 Allows users to plan their weeks worth of food based on categories they select. The app will then create a randomized list of recipes, which all have similar ingredients. These ingredients will also be presented as a grocery list to make the trip to the store easier.
 
+### Video Runthrough
+
+[![Watch the video](https://img.youtube.com/vi/rjGpmaEmR_cA/0.jpg)](https://youtube.com/shorts/rjGpmaEmR_c)
+
 ### App Evaluation
 
 - **Category:** Health 
@@ -46,10 +50,10 @@ Allows users to plan their weeks worth of food based on categories they select. 
 
 ### 2. Screen Archetypes
 
--  [ ]Stream
+-  [X]Stream
     - [X] User choose which categories for meals
     - [X] User sees list of recipes
-    - [ ] User can see saved lists
+    - [X] User can see saved list
 - [ ] Detail
     - [X] User can see recipe instructions
     - [X] User can see list of groceries
@@ -66,7 +70,7 @@ Allows users to plan their weeks worth of food based on categories they select. 
 
 **Flow Navigation** (Screen to Screen)
 
-- [ ] Choose different catergories
+- [X] Choose different catergories
     * Goes to list of recipes
         * Can see list of groceries 
         * Can see recipe instructions upon selecting recipe
@@ -74,16 +78,10 @@ Allows users to plan their weeks worth of food based on categories they select. 
 - [ ] Can search for recipes
     * Goes to list of recipes
         * Can see recipe instructions
-- [ ] Can see saved plans
+- [X] Can see saved plans
     * Goes to list of recipes
         * Can see list of groceries
         * Can see recipe instructions upon selection
 
 ## Wireframes
 ![Basic Wireframe!](Wireframes-6.jpg)
-
-### Networking
-
-- [Add list of network requests by screen ]
-- [Create basic snippets for each Parse network request]
-- [OPTIONAL: List endpoints if using existing API such as Yelp]
